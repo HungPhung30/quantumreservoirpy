@@ -1,6 +1,7 @@
 import numpy as np
 import stim
 from bitarray import bitarray
+from qiskit.quantum_info import Pauli, PauliList
 
 
 def fixed_weight_tableau(n_qubits, n_meas, weight, XYZ = False):
@@ -20,6 +21,7 @@ def fixed_weight_tableau(n_qubits, n_meas, weight, XYZ = False):
             "Your Paulis are overweight :( weight should be strictly less than n_qubits"
         )
     
+       
     # bistring generation in lexicographic order: https://stackoverflow.com/a/58072652
     def kbits(n, k):
         limit=1<<n
@@ -41,41 +43,66 @@ def fixed_weight_tableau(n_qubits, n_meas, weight, XYZ = False):
     
     rng = np.random.default_rng()
     rng.shuffle(Stabz)
-
-            
+          
     if XYZ:
 
-        def commutes_with_all(Stabxyz_list, newstab):
+        # Currently I'm letting Stim take care of choosing a set of linearly independent stabilizers
+        # but I'm leaving this rank function here in case we need it later.
 
-            commutes = True
-            index = 0
+        # def gf2_rank(rows):
+        #     """
+        #     Find rank of a matrix over GF2.
 
-            while commutes & index<len(Stabxyz_list):
-                anticommutations = (newstab != Stabxyz_list[index]) #TODO: just use qiskit lmao
-                commutes = not sum(anticommutations) % 2
-                index += 1
+        #     The rows of the matrix are given as nonnegative integers, thought
+        #     of as bit-strings.
 
-            return commutes
+        #     This function modifies the input list. Use gf2_rank(rows.copy())
+        #     instead of gf2_rank(rows) to avoid modifying rows.
+        #     """
+        #     rank = 0
+        #     while rows:
+        #         pivot_row = rows.pop()
+        #         if pivot_row:
+        #             rank += 1
+        #             lsb = pivot_row & -pivot_row
+        #             for index, row in enumerate(rows):
+        #                 if row & lsb:
+        #                     rows[index] = row ^ pivot_row
+        #     return rank
 
-        PauliArray = rng.choice(range(1,4), n_qubits)
-        mask = rng.choice(Stabz)
-        Stabxyz = np.array([PauliArray*mask])
+        Paulis = ['X', 'Y', 'Z']
+        signs = ['+', '-']
 
-        while np.linalg.matrix_rank(Stabxyz) < n_meas: # TODO : check linear independence using qiskit symplectic notation or stim
-            current_rank = np.linalg.rank(Stabxyz)
-            while np.linalg.matrix_rank(Stabxyz) == current_rank:
-                PauliArray = rng.choice(range(1,4), n_qubits)
-                mask = rng.choice(Stabz)
-                Stabxyz = np.vstack(Stabxyz, PauliArray*mask)
+        def generate_random_Paulistring():
+            PauliArray = rng.choice(Paulis, n_qubits)
+            mask = rng.choice(Stabz).astype(bool)
+            newPaulistring = rng.choice(signs) + ''.join(np.where(mask, PauliArray, 'I'))
+            return newPaulistring
 
-                #TODO : randomize signs BUT careful that they're not contradictory like +Z and -Z
+        
+        Stabxyz = PauliList(generate_random_Paulistring())
+        print(Stabxyz)
 
+        while (Stabxyz.size < 3*n_qubits) & (Stabxyz.size < 2**(weight-1)): # generate enough strings that at least n_qubit of them are linearly independent
+            
+            commute = False
+            already_here = False
+            while not commute or already_here:
+                newPaulistring = Pauli(generate_random_Paulistring())
+                commute = newPaulistring.commutes(Stabxyz).all()
+                already_here = Stabxyz.equiv(newPaulistring).any()
+        
+            Stabxyz = Stabxyz.insert(0, newPaulistring)
+            print(Stabxyz)
 
+        Stab = Stabxyz.to_labels()
 
-    stimStabz = (3*Stabz).tolist() # In Stim, 0=I, 1=X, 2=Y, 3=Z
-    stimStabz = [stim.PauliString(stab) for stab in stimStabz]
+    else:
+        Stab = (3*Stabz).tolist() # In Stim, 0=I, 1=X, 2=Y, 3=Z
 
-    tableau = stim.Tableau.from_stabilizers(stimStabz, allow_redundant=True, allow_underconstrained=True)
+    stimStabz = [stim.PauliString(stab) for stab in Stab]
+
+    tableau = stim.Tableau.from_stabilizers(stimStabz, allow_redundant=True, allow_underconstrained=not XYZ)
 
     # Translate to Qiskit and choose n_meas stabilizers
     stabilizer = [str(tableau.z_output(i)).replace('_','I') for i in range(n_meas)]
@@ -84,4 +111,4 @@ def fixed_weight_tableau(n_qubits, n_meas, weight, XYZ = False):
 
     return(tableau_dict)
 
-# print(fixed_weight_tableau(10,5,5,XYZ=True))
+# print(fixed_weight_tableau(10,9,9,XYZ=True))
