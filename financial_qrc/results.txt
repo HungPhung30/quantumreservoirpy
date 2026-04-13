@@ -1,0 +1,27 @@
+=== QRC Financial Direction Classifier — SPY Results ===
+Date: April 2026
+Data: SPY daily returns (499 trading days, ~2 years)
+Task: Predict next-day market direction (Up=1, Down=0)
+
+--- Qubit Sweep Results ---
+Qubits    QRC Acc    Naive Baseline    Beat Baseline?
+2         53.7%      52.6%             YES (+1.1%)
+3         53.7%      52.6%             YES (+1.1%)
+4         51.6%      52.6%             NO  (-1.0%)
+5         50.5%      52.6%             NO  (-2.1%)
+
+--- Classical Baseline (SVM on raw signals, window=5) ---
+Accuracy: 48.4%
+
+--- Key Findings ---
+1. Small QRC (2-3 qubits) slightly beats naive baseline.
+2. Larger QRC (4-5 qubits) hurts performance — overfits noise.
+3. QRC and classical SVM perform comparably on this task.
+4. Consistent with Efficient Market Hypothesis — SPY direction
+   has weak short-term autocorrelation signal.
+5. Reservoir size is a critical hyperparameter for financial QRC.
+
+--- Inspired By ---
+Türeci Group, Princeton ECE
+"Physical reservoir computing using finitely-sampled quantum systems"
+Khan, Hu, Angelatos, Türeci (2021)

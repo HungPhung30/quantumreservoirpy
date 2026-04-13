@@ -115,3 +115,52 @@ This project is supported by [SINTEF Digital](https://www.sintef.no/en/digital/)
 <img src="docs/_static/sintef_logo.png" alt="SINTEF Logo" width="200"/>
 
 *Teknologi for et bedre samfunn*
+
+
+---
+
+## Extension: Financial Market Direction Classification
+
+This extension applies QRC to financial time-series classification,
+specifically predicting next-day market direction (Up/Down) for SPY
+(S&P 500 ETF) using 2 years of daily return data.
+
+Inspired by the **Türeci Group (Princeton ECE)** work on quantum
+reservoir computing for classification tasks under finite sampling.
+
+### Task
+- **Input:** Binary sequence of daily market directions (1=Up, 0=Down)
+- **Target:** Predict next day's direction
+- **Data:** SPY daily returns (~499 trading days)
+
+### Results
+
+| Qubits | QRC Accuracy | Naive Baseline | Beat Baseline? |
+|--------|-------------|----------------|----------------|
+| 2      | 53.7%       | 52.6%          | ✓ YES (+1.1%)  |
+| 3      | 53.7%       | 52.6%          | ✓ YES (+1.1%)  |
+| 4      | 51.6%       | 52.6%          | ✗ NO  (-1.0%)  |
+| 5      | 50.5%       | 52.6%          | ✗ NO  (-2.1%)  |
+
+Classical SVM on raw signals: **48.4%**
+
+### Key Findings
+- Small reservoirs (2–3 qubits) slightly outperform the naive baseline
+- Larger reservoirs overfit the noise — performance degrades with size
+- Consistent with the Efficient Market Hypothesis (weak short-term autocorrelation)
+- Reservoir size is a critical hyperparameter for financial QRC tasks
+
+### How to Reproduce
+```bash
+pip install -r requirements.txt
+pip install yfinance scikit-learn
+python data/fetch_data.py
+python financial_qrc/train_and_evaluate.py
+python financial_qrc/classical_baseline.py
+python financial_qrc/qubit_sweep.py
+```
+
+### References
+- Khan, Hu, Angelatos, Türeci. *Physical reservoir computing using
+  finitely-sampled quantum systems.* (2021)
+- Türeci Group, Princeton ECE: https://turecigroup.princeton.edu
